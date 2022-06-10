@@ -3,7 +3,7 @@ close all
 
 
 %lidarVec=[0 -1 -0.1];
-axisrot=[0 0 1]; % eixo sobre o qual se rotaciona o 1º vetor do lidar
+axisrot=[0.2 0.1 1]; % eixo sobre o qual se rotaciona o 1º vetor do lidar
 axisrotH=[axisrot 1];
 lidarVec=makehgtform('xrotate',deg2rad(90))*axisrotH';
 
@@ -18,7 +18,7 @@ zlabel('Z');
 hold on
 
 
-for i=-16:2:16
+for i=-15:2:15
     M=makehgtform('axisrotate',axisrot,deg2rad(i));
     %lidarVec(4)=1; % torna homo
     lidarRot=M*lidarVec; % rotação
@@ -30,9 +30,11 @@ for i=-16:2:16
     hold on
 end
 
+lidarPack=lidarPack(2:end,:);
+
 %%
-% definição do plano de refleção
-a=[0 0 4];
+% definição do plano de refleção inicial
+a=[0 -2 4];
 b=[5 0 0];
 p=[10 -5 5];
 
@@ -56,10 +58,11 @@ for i=1:size(lidarPack,1)
 end
 
 % Preciso de arranjar forma para calcular um vetor perpendicular a outros 2
-% na linha 73
+% na linha 73 de forma a substituir [0 0 1] -- produto cruzado?
 %
 % preciso corrigir o angulo de reflexão ou o plot, não sei bem onde está o
-% problema
+% problema -- acho que tenho que refletir metade para um lado e metade para
+% o outro -- tenho que arranjar forma de dar sort a isto
 %
 %
 
@@ -69,19 +72,64 @@ lidarRef=[];
 for i=1:size(lidarPack,1)
     % angulo entre a normal do espelho e o feixe incidente em graus
     CosTheta = max(min(dot(lidarPack(i,:),n)/(norm(lidarPack(i,:))*norm(n)),1),-1);
-    ThetaInDegrees = real(acosd(CosTheta));
+    ThetaInDegrees = 180-real(acosd(CosTheta));
     theta=[theta ThetaInDegrees];
-        T=makehgtform('axisrotate',[0 0 1],-deg2rad(180-2*ThetaInDegrees));
-        lidarpack=lidarPack(i,:); lidarpack(4)=1;
-        lidarref=T*lidarpack';
-        lidarref=lidarref(1:3);
-        lidarRef=[lidarRef; lidarref'];
+    T=makehgtform('axisrotate',cross(n,lidarPack(i,:)),deg2rad(2*ThetaInDegrees));
+    lidarpack=lidarPack(i,:); lidarpack(4)=1;
+    lidarref=T*(-lidarpack');
+    lidarref=lidarref(1:3);
+    lidarRef=[lidarRef; lidarref'];
     if Check(i)~=0
         quiver3(pointIntersec(i,1),pointIntersec(i,2),pointIntersec(i,3),lidarRef(i,1),lidarRef(i,2),lidarRef(i,3),20);
         hold on
     end
 end
+%%
+% definição do plano de refleção secundario
+a1=[0 5 0];
+b1=[5 0 0];
+p1=[10 -5 15];
 
+[xx1,yy1,zz1]=planePoint(p1(1),p1(2),p1(3),a1(1),a1(2),a1(3),b1(1),b1(2),b1(3));
+surf(xx1,yy1,zz1);
+[nx1,ny1,nz1]=surfnorm(xx1,yy1,zz1);
+n1=[nx1(1,1),ny1(1,1),nz1(1,1)];
+
+pointIntersec1=[];
+Check1=[];
+for i=1:size(lidarPack,1)
+    t=50;
+    pointFinal=pointIntersec(i,:)+t*lidarRef(i,:);
+    [I1,check]=plane_line_intersect(n1,p1,pointIntersec(i,:),pointFinal);
+    Check1=[Check1 check];
+    pointIntersec1=[pointIntersec1; I1];
+    if check ~=0
+        plot3(I1(1),I1(2),I1(3),'*');
+        hold on
+    end
+end
+
+theta1=[];
+lidarRef1=[];
+for i=1:size(lidarPack,1)
+    % angulo entre a normal do espelho e o feixe incidente em graus
+    CosTheta = max(min(dot(lidarRef(i,:),n1)/(norm(lidarRef(i,:))*norm(n1)),1),-1);
+    ThetaInDegrees = 180-real(acosd(CosTheta));
+    theta1=[theta1 ThetaInDegrees];
+    T=makehgtform('axisrotate',cross(n1,lidarRef(i,:)),deg2rad(2*ThetaInDegrees));
+    lidarpack=lidarRef(i,:); lidarpack(4)=1;
+    lidarref=T*(-lidarpack');
+    lidarref=lidarref(1:3);
+    lidarRef1=[lidarRef1; lidarref'];
+    if Check(i)~=0
+        quiver3(pointIntersec1(i,1),pointIntersec1(i,2),pointIntersec1(i,3),lidarRef1(i,1),lidarRef1(i,2),lidarRef1(i,3),20);
+        hold on
+    end
+end
+
+
+
+%%
 % definição do plano que representa o objeto
 a2=[0 0 4];
 b2=[5 0 5];
@@ -96,8 +144,8 @@ pointIntersec2=[];
 Check2=[];
 for i=1:size(lidarPack,1)
     t=50;
-    pointFinal=pointIntersec(i,:)+t*lidarRef(i,:);
-    [I2,check2]=plane_line_intersect(n2,p2,pointIntersec(i,:),pointFinal);
+    pointFinal=pointIntersec1(i,:)+t*lidarRef1(i,:);
+    [I2,check2]=plane_line_intersect(n2,p2,pointIntersec1(i,:),pointFinal);
     Check2=[Check2 check2];
     pointIntersec2=[pointIntersec2; I2];
     if check2 ~=0
