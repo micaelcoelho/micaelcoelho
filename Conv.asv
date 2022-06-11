@@ -1,0 +1,8 @@
+function [b] = Conv(a)
+%UNTITLED5 Summary of this function goes here
+%   Esta função converte. exemplo: a=[123] para a=[1 2 3]
+w=strsplit
+for i=1:length(w)
+    b(i)=str2double(w(i));
+end
+
